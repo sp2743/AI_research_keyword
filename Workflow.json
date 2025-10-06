@@ -1,0 +1,231 @@
+{
+  "nodes": [
+    {
+      "parameters": {
+        "values": {
+          "string": [
+            {
+              "name": "keyword",
+              "value": "Top University"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "name": "Set Seed Keyword",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 2,
+      "position": [
+        464,
+        112
+      ],
+      "id": "3377091d-8854-4251-a275-8ddfa3f650fd"
+    },
+    {
+      "parameters": {
+        "functionCode": "// Get the seed keyword from the first incoming item (from Set Seed Keyword node)\nconst seedKeyword = $items(\"Set Seed Keyword\")[0].json.keyword;\n\n// Get candidate keywords from the HTTP Request node\n// Each item here comes from the HTTP Request node\nconst candidate_keywords = items.map(item => item.json.organic_results?.map(r => r.title) || []).flat();\n\n// Mock enrichment data (replace with real API call if needed)\nconst enriched = candidate_keywords.map(k => ({\n    inputkeyword: seedKeyword,\n    candidateKeyword: k,\n    monthlyVolume: Math.floor(Math.random() * 10000),\n    competition: Math.random(),\n    intentMatch: 0.8\n}));\n\n// Return enriched items in n8n format\nreturn enriched.map(e => ({ json: e }));\n\n"
+      },
+      "id": "67d68cfd-799e-49f5-8f17-1a63dc18e837",
+      "name": "Keyword Data Enrichment (Mock)",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        960,
+        112
+      ]
+    },
+    {
+      "parameters": {
+        "functionCode": "const scored = items.map(item => {\n  const { inputkeyword, candidateKeyword, monthlyVolume, competition, intentMatch } = item.json;\n  const normVol = Math.min(monthlyVolume / 10000, 1);\n  const score = (0.4 * normVol) + (0.3 * (1 - competition)) + (0.3 * intentMatch);\n\n  return { \n    json: { \n      inputkeyword, \n      candidateKeyword, \n      monthlyVolume, \n      competition, \n      intentMatch, \n      score \n    } \n  };\n});\n\n// Sort by score and take top 50\nscored.sort((a, b) => b.json.score - a.json.score);\nreturn scored.slice(0, 50);"
+      },
+      "id": "7b6f9196-67fd-4f8e-adb7-add6d413dcd2",
+      "name": "Scoring & Ranking",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        1168,
+        112
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://serpapi.com/search.json",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "api_key",
+              "value": "833cfbf0e785bb5595fee11a98fa8fbd1592b657472c9f962d0f790ef945ea75"
+            },
+            {
+              "name": "q",
+              "value": "={{ $json.keyword }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        720,
+        112
+      ],
+      "id": "411712b9-1e23-41ad-b342-1870e9fb7e39",
+      "name": "HTTP Request"
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1kRW_k5uVqI_Xl6ImCS6Sur0Bfv3B1q7HX_4rsydi-HU",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Sheet1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1kRW_k5uVqI_Xl6ImCS6Sur0Bfv3B1q7HX_4rsydi-HU/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Input keyword": "={{ $json.inputkeyword }}",
+            "Candidate Keyword": "={{ $json.candidateKeyword }}",
+            "MontlyVolume": "={{ $json.monthlyVolume }}",
+            "intentMatch": "={{ $json.intentMatch }}",
+            "Competition": "={{ $json.competition }}",
+            "score": "={{ $json.score }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Input keyword",
+              "displayName": "Input keyword",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Candidate Keyword",
+              "displayName": "Candidate Keyword",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "MontlyVolume",
+              "displayName": "MontlyVolume",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Competition",
+              "displayName": "Competition",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "intentMatch",
+              "displayName": "intentMatch",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "score",
+              "displayName": "score",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        1440,
+        112
+      ],
+      "id": "07a5edd6-af6b-41f0-98ea-b104cce8f2bc",
+      "name": "Append row in sheet",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "A3f2jhzyk8GIfwLC",
+          "name": "Google Sheets account"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Set Seed Keyword": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Keyword Data Enrichment (Mock)": {
+      "main": [
+        [
+          {
+            "node": "Scoring & Ranking",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Scoring & Ranking": {
+      "main": [
+        [
+          {
+            "node": "Append row in sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request": {
+      "main": [
+        [
+          {
+            "node": "Keyword Data Enrichment (Mock)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "723a1fd17229b17a004b3d6904c678bd631650bad147b5223401ea6a5f17d6e7"
+  }
+}
